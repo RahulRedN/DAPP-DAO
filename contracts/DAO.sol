@@ -2,13 +2,12 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
 
-contract DAO is ReentrancyGuard, AccessControl, ERC20Capped {
+contract DAO is AccessControl, ERC20Capped {
     bytes32 private immutable STAKEHOLDER_ROLE = keccak256("STAKEHOLDER");
     bytes32 private immutable CONTRIBUTOR_ROLE = keccak256("CONTRIBUTOR");
-    uint32 immutable MIN_PROTOCOL_DURATION = 1 weeks;
+    uint32 immutable MIN_PROTOCOL_DURATION = 160 seconds;
     uint256 totalProtocols;
     address contractAddress = address(this);
 
@@ -20,8 +19,7 @@ contract DAO is ReentrancyGuard, AccessControl, ERC20Capped {
     mapping(uint256 => VotedStruct[]) private protocolVotes;
     mapping(address => uint256) private stakeholders;
 
-    constructor() ERC20("GovernanceToken", "GT") ERC20Capped(1000000 * 1e18) {
-    }
+    constructor() ERC20("GovernanceToken", "GT") ERC20Capped(10000000 * 1e18) {}
 
     struct ProtocolStruct {
         uint256 id;
@@ -42,6 +40,7 @@ contract DAO is ReentrancyGuard, AccessControl, ERC20Capped {
         uint256 timestamp;
         bool choosen;
         uint256 voteCost;
+        uint256 numVotes;
     }
 
     event Action(
@@ -49,6 +48,11 @@ contract DAO is ReentrancyGuard, AccessControl, ERC20Capped {
         bytes32 role,
         string message,
         uint256 amount
+    );
+
+    event Return(
+        uint256 protocolId,
+        string message
     );
 
     modifier stakeholderOnly(string memory message) {
@@ -87,12 +91,12 @@ contract DAO is ReentrancyGuard, AccessControl, ERC20Capped {
     ) external stakeholderOnly("Unauthorized: Stakeholders only") {
         ProtocolStruct storage protocol = proposedProtocols[protocolId];
 
-        handleVoting(protocol, protocolId);
+        handleVoting(protocol);
 
-        uint256 voteCost = 2**votesToAcquire; // Calculate the cost based on the number of votes to acquire
+        uint256 voteCost = (2**votesToAcquire)* 1e18; // Calculate the cost based on the number of votes to acquire
 
         require(
-            balanceOf(msg.sender) >= voteCost*1e18,
+            balanceOf(msg.sender) >= voteCost,
             "Insufficient tokens"
         );
 
@@ -102,20 +106,20 @@ contract DAO is ReentrancyGuard, AccessControl, ERC20Capped {
         stakeholderVotes[msg.sender].push(protocol.id);
 
         protocolVotes[protocol.id].push(
-            VotedStruct(msg.sender, block.timestamp, choosen, voteCost)
+            VotedStruct(msg.sender, block.timestamp, choosen, voteCost, votesToAcquire)
         );
 
         // Deduct the voting cost from the stakeholder
-        _transfer(msg.sender, address(this), voteCost*1e18);
+        _transfer(msg.sender, address(this), voteCost);
 
         emit Action(msg.sender, STAKEHOLDER_ROLE, "PROTOCOL VOTE", voteCost);
     }
 
-    function handleVoting(ProtocolStruct storage protocol, uint256 protocolId)
+    function handleVoting(ProtocolStruct storage protocol)
         private
     {
         if (protocol.decided || protocol.duration <= block.timestamp) {
-            executeProposal(protocolId);
+            executeProposal(protocol.id);
             revert("Protocol duration expired");
         }
 
@@ -127,7 +131,7 @@ contract DAO is ReentrancyGuard, AccessControl, ERC20Capped {
     }
 
     function executeProposal(uint256 protocolId)
-        internal
+        public
         stakeholderOnly("Unauthorized: Stakeholders only")
         returns (bool)
     {
@@ -136,6 +140,25 @@ contract DAO is ReentrancyGuard, AccessControl, ERC20Capped {
         require(block.timestamp > protocol.duration, "Protocol still ongoing");
 
         require(!protocol.decided, "Protocol descion has been made");
+
+        uint256 totalSpentTokens = 0;
+        VotedStruct[] storage votes = protocolVotes[protocolId];
+
+        // Calculate the total spent tokens by all stakeholders
+        for (uint256 i = 0; i < votes.length; i++) {
+            if (votes[i].choosen) {
+                totalSpentTokens += votes[i].voteCost;
+            }
+        }
+        
+        if (totalSpentTokens > 0) {
+            // Transfer tokens back to each stakeholder based on their voteCost
+            for (uint256 i = 0; i < votes.length; i++) {
+                _transfer(address(this), votes[i].voter, votes[i].voteCost);
+            }
+        }
+
+        emit Return(protocolId, "Tokens returned to respective Stakeholders");
 
         //simple majority
         if (protocol.upvotes > protocol.downvotes) {
@@ -156,11 +179,11 @@ contract DAO is ReentrancyGuard, AccessControl, ERC20Capped {
             uint256 totalContribution = stakeholders[msg.sender] + msg.value;
 
             _grantRole(CONTRIBUTOR_ROLE, msg.sender);
-            if (totalContribution >= 5 ether) {
+            if (totalContribution >= 1 ether) {
                 stakeholders[msg.sender] = totalContribution;
 
                 // Mint new GT tokens for the stakeholder
-                _mint(msg.sender, 5000 * 1e18);
+                _mint(msg.sender, 10000 * 1e18);
                 _grantRole(STAKEHOLDER_ROLE, msg.sender);
             } else {
                 stakeholders[msg.sender] += msg.value;

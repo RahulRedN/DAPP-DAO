@@ -1,14 +1,14 @@
 const hre = require("hardhat");
 
 async function main() {
-  const lock = await hre.ethers.deployContract("Lock");
+  const dao = await hre.ethers.deployContract("DAO");
 
-  await lock.waitForDeployment();
+  await dao.waitForDeployment();
+
+  const contractAddress = await dao.getAddress();
 
   console.log(
-    `Lock with ${ethers.formatEther(
-      lockedAmount
-    )}ETH and unlock timestamp ${unlockTime} deployed to ${lock.target}`
+    `Deployed contract address: ${contractAddress}`
   );
 }
 
