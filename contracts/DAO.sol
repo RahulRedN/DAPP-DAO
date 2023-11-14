@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
 contract DAO is AccessControl, ERC20Capped {
     bytes32 private immutable STAKEHOLDER_ROLE = keccak256("STAKEHOLDER");
     bytes32 private immutable CONTRIBUTOR_ROLE = keccak256("CONTRIBUTOR");
-    uint32 immutable MIN_PROTOCOL_DURATION = 160 seconds;
+    uint32 immutable MIN_PROTOCOL_DURATION = 600 seconds;
     uint256 totalProtocols;
     address contractAddress = address(this);
 
@@ -58,6 +58,10 @@ contract DAO is AccessControl, ERC20Capped {
     modifier stakeholderOnly(string memory message) {
         require(hasRole(STAKEHOLDER_ROLE, msg.sender), message);
         _;
+    }
+
+    function isStakeholder() external view returns (bool) {
+        return hasRole(STAKEHOLDER_ROLE, msg.sender);
     }
 
     function createProtocol(string calldata title, string calldata description)
@@ -179,7 +183,7 @@ contract DAO is AccessControl, ERC20Capped {
             uint256 totalContribution = stakeholders[msg.sender] + msg.value;
 
             _grantRole(CONTRIBUTOR_ROLE, msg.sender);
-            if (totalContribution >= 1 ether) {
+            if (totalContribution >= 0.5 ether) {
                 stakeholders[msg.sender] = totalContribution;
 
                 // Mint new GT tokens for the stakeholder
@@ -244,6 +248,13 @@ contract DAO is AccessControl, ERC20Capped {
         returns (uint256[] memory)
     {
         return stakeholderVotes[msg.sender];
+    }
+
+    function getContributions()
+        external
+        view 
+        returns (uint256){
+        return stakeholders[msg.sender];
     }
 
     function getStakeholderTokens()
