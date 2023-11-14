@@ -91,7 +91,7 @@ const ViewProtocol = () => {
 
       // Reload the data after voting
       loadData(contract);
-      alert("Upvoting Succesful!");
+      alert("Downvoting Succesful!");
     } catch (error) {
       console.log(error.message);
       alert("Error Downvoting: " + error.reason);
