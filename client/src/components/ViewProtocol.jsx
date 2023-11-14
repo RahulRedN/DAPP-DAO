@@ -19,22 +19,23 @@ const ViewProtocol = () => {
 
   const [vote, setVote] = useState("");
 
+  const loadData = async (contract) => {
+    try {
+      const res = await contract.getProtocol(id);
+      const res1 = await contract.getVotesOf(id);
+      setProtocol(res);
+      setVotes(res1);
+    } catch (error) {
+      console.error(error);
+      alert("Error : " + error.message);
+    }
+  };
+
   useEffect(() => {
-    const { contract, account } = state;
-    const loadData = async () => {
-      try {
-        const res = await contract.getProtocol(id);
-        const res1 = await contract.getVotesOf(id);
-        setProtocol(res);
-        setVotes(res1);
-      } catch (error) {
-        console.error(error);
-        alert("Error : " + error.message);
-      }
-    };
+    const { contract } = state;
 
     if (contract) {
-      loadData();
+      loadData(contract);
     }
   }, [state]);
 
@@ -42,6 +43,70 @@ const ViewProtocol = () => {
     timestamp = Number(timestamp);
     const date = new Date(timestamp * 1000);
     return date.toLocaleString();
+  };
+
+  const upvoteHandler = async () => {
+    const { contract } = state;
+    if (vote == "") {
+      alert("Please Select Votes!");
+      return;
+    }
+    try {
+      const voteValue = Number(vote);
+
+      // Call the contract function to register an upvote
+      await contract.performVote(id, true, voteValue);
+
+      // Reload the data after voting
+      loadData(contract);
+      alert("Upvoting Succesful!");
+    } catch (error) {
+      console.log(error.message);
+      alert("Error Upvoting: " + error.reason);
+      if (error.reason == "Protocol duration expired") {
+        alert("Please Execute Protocol");
+        try {
+          await contract.executeProposal(id);
+          alert("Executed!");
+        } catch (error) {
+          alert("Not Executed");
+          console.error(error);
+        }
+      }
+    }
+    setVote("");
+  };
+
+  const downvoteHandler = async () => {
+    const { contract } = state;
+    if (vote == "") {
+      alert("Please Select Votes!");
+      return;
+    }
+    try {
+      const voteValue = Number(vote);
+
+      // Call the contract function to register an upvote
+      await contract.performVote(id, false, voteValue);
+
+      // Reload the data after voting
+      loadData(contract);
+      alert("Upvoting Succesful!");
+    } catch (error) {
+      console.log(error.message);
+      alert("Error Downvoting: " + error.reason);
+      if (error.reason == "Protocol duration expired") {
+        alert("Please Execute Protocol");
+        try {
+          await contract.executeProposal(id);
+          alert("Executed!");
+        } catch (error) {
+          alert("Not Executed");
+          console.error(error);
+        }
+      }
+    }
+    setVote("");
   };
 
   return (
@@ -60,12 +125,12 @@ const ViewProtocol = () => {
             series={[
               {
                 data: [protocol ? Number(protocol?.upvotes) : 0],
-                label: "Yes",
+                label: "Upvotes",
                 color: "#00ff00",
               },
               {
                 data: [protocol ? Number(protocol?.downvotes) : 0],
-                label: "No",
+                label: "Downvotes",
                 color: "red",
               },
             ]}
@@ -83,12 +148,16 @@ const ViewProtocol = () => {
             step={1}
             value={vote}
             onChange={(e) => setVote(e.target.value)}
-            placeholder="Ex- 2"
+            placeholder="Ex: 2"
           />
         </div>
         <div className={classes.choice}>
-          <button className={classes.up}>Upvote</button>{" "}
-          <button className={classes.down}>Downvote</button>
+          <button className={classes.up} onClick={upvoteHandler}>
+            Upvote
+          </button>{" "}
+          <button className={classes.down} onClick={downvoteHandler}>
+            Downvote
+          </button>
         </div>
       </div>
       <hr />
@@ -99,16 +168,18 @@ const ViewProtocol = () => {
               <th>Voter</th>
               <th>timestamp</th>
               <th>Chosen</th>
-              <th>Action</th>
+              <th>Number Of Votes</th>
             </tr>
           </thead>
           <tbody>
-            {votes?.reverse().map((obj, idx) => (
+            {[...votes]?.reverse().map((obj, idx) => (
               <tr key={idx}>
                 <td>{obj.voter}</td>
                 <td>{formatDate(obj.timestamp)}</td>
-                <td>{`${obj.choosen}`}</td>
-                <td>{obj.numVotes}</td>
+                <td style={{ color: obj.choosen ? "#00c300" : "red" }}>
+                  {obj.choosen ? "Upvote" : "Downvote"}
+                </td>
+                <td>{Number(obj.numVotes)}</td>
               </tr>
             ))}
             {votes.length == 0 && (

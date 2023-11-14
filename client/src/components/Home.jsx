@@ -80,7 +80,7 @@ const Home = () => {
       setValue("");
     } catch (error) {
       alert("Contribution failed:", error.message);
-      console.error("Contribution failed:", error.message);
+      console.error("Contribution failed:" + error.reason);
     } finally {
       setIsLoading(false);
     }
@@ -102,6 +102,7 @@ const Home = () => {
   };
 
   const handleCase = (protocol) => {
+    console.log(protocol.decided);
     if (protocol.decided) {
       if (protocol.passed) {
         return <span className={classes.passed}>passed</span>;
@@ -157,8 +158,8 @@ const Home = () => {
       </div>
       <div className={classes.protocols}>
         <h1 className={classes}>
-          {protocols?.filter((protocol) => !protocol.decided).length} protocol(s)
-          currently open
+          {protocols?.filter((protocol) => !protocol.decided).length}{" "}
+          protocol(s) currently open
         </h1>
         <div className={classes.filter}>
           <button
@@ -204,26 +205,27 @@ const Home = () => {
               </tr>
             </thead>
             <tbody>
-              {protocolDetails?.reverse().map((protocol) => (
-                <tr key={protocol.id}>
-                  <td>{protocol.proposer}</td>
-                  <td>{protocol.title}</td>
-                  <td>{formatDate(protocol.duration)}</td>
-                  <td>
-                    <Link
-                      to={`/protocol?id=${protocol.id}`}
-                      className={classes.view}
-                    >
-                      view
-                    </Link>
-                    {handleCase(protocol)}
-                  </td>
-                </tr>
-              ))}
-              {protocolDetails.length == 0 && (
+              {protocolDetails?.length > 0 ? (
+                [...protocolDetails].reverse().map((protocol) => (
+                  <tr key={protocol.id}>
+                    <td>{protocol.proposer}</td>
+                    <td>{protocol.title}</td>
+                    <td>{formatDate(protocol.duration)}</td>
+                    <td>
+                      <Link
+                        to={`/protocol?id=${protocol.id}`}
+                        className={classes.view}
+                      >
+                        view
+                      </Link>
+                      {handleCase(protocol)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
                   <td colSpan={4} style={{ textAlign: "center" }}>
-                    ...
+                    No protocols available.
                   </td>
                 </tr>
               )}

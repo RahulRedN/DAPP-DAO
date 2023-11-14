@@ -150,8 +150,8 @@
 
 .passed {
   padding: 0.1rem 0.5rem;
-  border: 1px solid #00ff00;
-  color: rgb(0, 255, 0);
+  border: 1px solid #00c300;
+  color: #00c300;
   background-color: inherit;
   border-radius: 5rem;
 }

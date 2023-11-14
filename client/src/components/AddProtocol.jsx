@@ -47,7 +47,7 @@ const AddProtocol = () => {
       console.log("Protocol created successfully!");
     } catch (error) {
       console.error("Error creating protocol:", error.message);
-      alert("Error creating protocol:" + error.message);
+      alert("Error creating protocol:" + error.reason);
     }
 
     setError("");
